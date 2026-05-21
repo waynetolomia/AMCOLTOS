@@ -211,6 +211,20 @@ function Textarea(props) {
   );
 }
 
+function Select(props) {
+  return (
+    <select
+      {...props}
+      className={classNames(
+        "w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200",
+        props.className
+      )}
+    >
+      {props.children}
+    </select>
+  );
+}
+
 function Button({ children, variant = "dark", className, ...props }) {
   const variants = {
     dark: "bg-slate-900 text-white hover:bg-slate-700",
@@ -253,6 +267,7 @@ export default function AMCOLTOSExamBuilder() {
 
   const [objectives, setObjectives] = useState(SAMPLE_OBJECTIVES);
   const [apiKey, setApiKey] = useState("");
+  const [aiModel, setAiModel] = useState("gemini-2.5-flash");
   const [aiTOS, setAiTOS] = useState("");
   const [aiExam, setAiExam] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
@@ -268,6 +283,7 @@ export default function AMCOLTOSExamBuilder() {
         if (data.examSettings) setExamSettings(data.examSettings);
         if (data.objectives) setObjectives(data.objectives);
         if (data.apiKey) setApiKey(data.apiKey);
+        if (data.aiModel) setAiModel(data.aiModel);
         if (data.aiTOS) setAiTOS(data.aiTOS);
         if (data.aiExam) setAiExam(data.aiExam);
       } catch (error) {
@@ -279,7 +295,7 @@ export default function AMCOLTOSExamBuilder() {
   function saveData() {
     localStorage.setItem(
       "amcol_tos_exam_builder_v1",
-      JSON.stringify({ course, examSettings, objectives, apiKey, aiTOS, aiExam })
+      JSON.stringify({ course, examSettings, objectives, apiKey, aiModel, aiTOS, aiExam })
     );
     setSavedNotice("Saved in this browser.");
     setTimeout(() => setSavedNotice(""), 2200);
@@ -368,7 +384,7 @@ IMPORTANT: You must separate the output for Task 1 and Task 2 exactly with this 
 ===SPLIT_HERE===
 `;
 
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${aiModel}:generateContent?key=${apiKey}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -410,7 +426,7 @@ IMPORTANT: You must separate the output for Task 1 and Task 2 exactly with this 
           <div className="grid gap-6 p-6 md:grid-cols-[1.5fr_.8fr] md:p-8">
             <div>
               <div className="mb-4 inline-flex rounded-full border border-amber-300/40 bg-white/10 px-3 py-1 text-xs font-bold uppercase tracking-wider text-amber-200">
-                AMCOL Academic Tool
+                AMCOL Academic Tool (Updated)
               </div>
               <h1 className="text-3xl font-black leading-tight md:text-5xl">
                 Auto TOS & Exam Generator
@@ -508,7 +524,19 @@ IMPORTANT: You must separate the output for Task 1 and Task 2 exactly with this 
                     <Button onClick={saveData} variant="light">Save Key</Button>
                   </div>
                 </Field>
-                <p className="mt-2 text-xs text-amber-700">
+                <div className="mt-4">
+                  <Field label="AI Model">
+                    <Select value={aiModel} onChange={(e) => setAiModel(e.target.value)} className="mt-2">
+                      <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
+                      <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+                      <option value="gemini-2.0-pro-exp-0205">Gemini 2.0 Pro Experimental</option>
+                      <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
+                      <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
+                      <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
+                    </Select>
+                  </Field>
+                </div>
+                <p className="mt-4 text-xs text-amber-700">
                   Your API key is stored locally in your browser and sent directly to Google. We do not store it on any external servers.
                 </p>
               </div>
