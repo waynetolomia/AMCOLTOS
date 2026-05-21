@@ -27,7 +27,7 @@
 
   <script type="text/babel">
     const { useState, useEffect } = React;
-    const { Document, Packer, Paragraph, Table, TableRow, TableCell, WidthType } = window.docx;
+    const { Document, Packer, Paragraph, Table, TableRow, TableCell, WidthType, BorderStyle, TextRun, AlignmentType, HeadingLevel } = window.docx;
 
     // Safe UUID Generator for local file:// execution
     const generateId = () => {
@@ -79,39 +79,128 @@
     }
 
     async function exportToDocx(filename, content) {
+      // Helper to handle **bold** markdown cleanly
+      const parseTextToRuns = (text, isHeader) => {
+        if (isHeader) {
+          return [new TextRun({ text: text.replace(/\*\*/g, ""), bold: true, size: 22 })];
+        }
+        const parts = text.split("**");
+        return parts.map((part, index) => new TextRun({
+          text: part,
+          bold: index % 2 === 1,
+          size: 22
+        }));
+      };
+
       const children = [];
       let tableRows = [];
       let inTable = false;
+      let isHeaderRow = false;
 
       const lines = content.split("\n");
       for (let i = 0; i < lines.length; i++) {
         const line = lines[i].trim();
         
         if (line.startsWith("|") && line.endsWith("|")) {
-          inTable = true;
-          if (line.match(/^\|(?:[\s-:]+\|)+$/)) continue;
+          if (!inTable) {
+            inTable = true;
+            isHeaderRow = true;
+          }
+          
+          if (line.match(/^\|(?:[\s-:]+\|)+$/)) {
+            continue;
+          }
 
           const cells = line.split("|").slice(1, -1).map(c => c.trim());
           tableRows.push(
             new TableRow({
+              tableHeader: isHeaderRow,
               children: cells.map(cellText => new TableCell({
-                children: [new Paragraph(cellText)],
+                shading: isHeaderRow ? { fill: "F2F2F2" } : undefined,
+                margins: { top: 100, bottom: 100, left: 100, right: 100 },
+                children: [
+                  new Paragraph({
+                    alignment: isHeaderRow ? AlignmentType.CENTER : AlignmentType.LEFT,
+                    children: parseTextToRuns(cellText, isHeaderRow),
+                  })
+                ]
               }))
             })
           );
+          
+          if (isHeaderRow) isHeaderRow = false;
+
         } else {
           if (inTable) {
-            children.push(new Table({ rows: tableRows, width: { size: 100, type: WidthType.PERCENTAGE } }));
-            children.push(new Paragraph("")); // Spacer after table
+            children.push(new Table({
+              rows: tableRows,
+              width: { size: 100, type: WidthType.PERCENTAGE },
+              borders: {
+                top: { style: BorderStyle.SINGLE, size: 4, color: "7F7F7F" },
+                bottom: { style: BorderStyle.SINGLE, size: 4, color: "7F7F7F" },
+                left: { style: BorderStyle.SINGLE, size: 4, color: "7F7F7F" },
+                right: { style: BorderStyle.SINGLE, size: 4, color: "7F7F7F" },
+                insideHorizontal: { style: BorderStyle.SINGLE, size: 4, color: "D9D9D9" },
+                insideVertical: { style: BorderStyle.SINGLE, size: 4, color: "D9D9D9" },
+              }
+            }));
+            children.push(new Paragraph({ text: "", spacing: { after: 200 } })); // Spacer after table
             tableRows = [];
             inTable = false;
           }
-          children.push(new Paragraph({ text: line }));
+          
+          let text = line;
+          let heading = undefined;
+          
+          if (line.startsWith("### ")) {
+            text = line.replace("### ", "");
+            heading = HeadingLevel.HEADING_3;
+          } else if (line.startsWith("## ")) {
+            text = line.replace("## ", "");
+            heading = HeadingLevel.HEADING_2;
+          } else if (line.startsWith("# ")) {
+            text = line.replace("# ", "");
+            heading = HeadingLevel.HEADING_1;
+          }
+
+          if (text || heading) {
+            children.push(new Paragraph({
+              heading: heading,
+              spacing: { after: 120, before: heading ? 240 : 0 },
+              children: parseTextToRuns(text, false)
+            }));
+          } else if (line === "") {
+            children.push(new Paragraph({ text: "", spacing: { after: 120 } }));
+          }
         }
       }
-      if (inTable) children.push(new Table({ rows: tableRows, width: { size: 100, type: WidthType.PERCENTAGE } }));
+      
+      if (inTable) {
+        children.push(new Table({
+          rows: tableRows,
+          width: { size: 100, type: WidthType.PERCENTAGE },
+          borders: {
+            top: { style: BorderStyle.SINGLE, size: 4, color: "7F7F7F" },
+            bottom: { style: BorderStyle.SINGLE, size: 4, color: "7F7F7F" },
+            left: { style: BorderStyle.SINGLE, size: 4, color: "7F7F7F" },
+            right: { style: BorderStyle.SINGLE, size: 4, color: "7F7F7F" },
+            insideHorizontal: { style: BorderStyle.SINGLE, size: 4, color: "D9D9D9" },
+            insideVertical: { style: BorderStyle.SINGLE, size: 4, color: "D9D9D9" },
+          }
+        }));
+      }
 
       const doc = new Document({
+        styles: {
+          default: {
+            document: {
+              run: { font: "Arial", size: 22, color: "262626" },
+            },
+            heading1: { run: { font: "Arial", size: 32, bold: true, color: "000000" } },
+            heading2: { run: { font: "Arial", size: 28, bold: true, color: "000000" } },
+            heading3: { run: { font: "Arial", size: 24, bold: true, color: "000000" } },
+          },
+        },
         sections: [{
           properties: {},
           children: children,
