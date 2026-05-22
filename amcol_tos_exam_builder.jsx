@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Download, FileText, Plus, Printer, Save, Trash2, ClipboardList, GraduationCap, RefreshCw, Sparkles, Key, Settings } from "lucide-react";
+import { Download, FileText, Plus, Save, Trash2, ClipboardList, GraduationCap, RefreshCw, Sparkles, Key, Settings, ChevronDown } from "lucide-react";
 import { Document, Packer, Paragraph, Table, TableRow, TableCell, WidthType, BorderStyle, TextRun, AlignmentType, HeadingLevel } from "docx";
 
 const SAMPLE_OBJECTIVES = [
@@ -10,18 +10,6 @@ const SAMPLE_OBJECTIVES = [
 
 function classNames(...items) {
   return items.filter(Boolean).join(" ");
-}
-
-function downloadFile(filename, content, type = "text/plain") {
-  const blob = new Blob([content], { type });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
 }
 
 async function exportToDocx(filename, content) {
@@ -187,45 +175,47 @@ function Field({ label, children }) {
   );
 }
 
-function Input(props) {
+function Input({ className, ...props }) {
   return (
     <input
       {...props}
       className={classNames(
         "w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200",
-        props.className
+        className
       )}
     />
   );
 }
 
-function Textarea(props) {
+function Textarea({ className, ...props }) {
   return (
     <textarea
       {...props}
       className={classNames(
         "w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200",
-        props.className
+        className
       )}
     />
   );
 }
 
-function Select(props) {
+function Select({ children, className, ...props }) {
   return (
-    <select
-      {...props}
-      className={classNames(
-        "w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200",
-        props.className
-      )}
-    >
-      {props.children}
-    </select>
+    <div className={classNames("relative w-full", className)}>
+      <select
+        {...props}
+        className="w-full appearance-none cursor-pointer rounded-xl border border-slate-200 bg-white py-2 pl-3 pr-10 text-sm shadow-sm outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
+      >
+        {children}
+      </select>
+      <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400">
+        <ChevronDown size={16} />
+      </div>
+    </div>
   );
 }
 
-function Button({ children, variant = "dark", className, ...props }) {
+function Button({ children, variant = "dark", className, type = "button", ...props }) {
   const variants = {
     dark: "bg-slate-900 text-white hover:bg-slate-700",
     light: "bg-white text-slate-800 border border-slate-200 hover:bg-slate-50",
@@ -234,6 +224,7 @@ function Button({ children, variant = "dark", className, ...props }) {
   };
   return (
     <button
+      type={type}
       {...props}
       className={classNames(
         "inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-bold shadow-sm transition disabled:cursor-not-allowed disabled:opacity-50",
@@ -273,6 +264,7 @@ export default function AMCOLTOSExamBuilder() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [activeTab, setActiveTab] = useState("course");
   const [savedNotice, setSavedNotice] = useState("");
+  const [showModelModal, setShowModelModal] = useState(false);
 
   useEffect(() => {
     const saved = localStorage.getItem("amcol_tos_exam_builder_v1");
@@ -509,31 +501,21 @@ IMPORTANT: You must separate the output for Task 1 and Task 2 exactly with this 
             <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm md:p-6">
               <SectionTitle icon={Sparkles} title="Generate with AI" subtitle="The AI will automatically determine topics, hours, and test formats based on your course info." />
               <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-4 shadow-sm">
-                <Field label="Google Gemini API Key">
-                  <div className="flex gap-2">
-                    <div className="relative flex-1">
-                      <Key className="absolute left-3 top-2.5 text-slate-400" size={16} />
-                      <Input
-                        type="password"
-                        placeholder="AIza..."
-                        className="pl-9"
-                        value={apiKey}
-                        onChange={(e) => setApiKey(e.target.value)}
-                      />
+                <div className="flex-1">
+                  <Field label="Google Gemini API Key">
+                    <div className="flex gap-2">
+                      <div className="relative flex-1">
+                        <Key className="absolute left-3 top-2.5 text-slate-400" size={16} />
+                        <Input
+                          type="password"
+                          placeholder="AIza..."
+                          className="pl-9"
+                          value={apiKey}
+                          onChange={(e) => setApiKey(e.target.value)}
+                        />
+                      </div>
+                      <Button onClick={saveData} variant="light">Save Key</Button>
                     </div>
-                    <Button onClick={saveData} variant="light">Save Key</Button>
-                  </div>
-                </Field>
-                <div className="mt-4">
-                  <Field label="AI Model">
-                    <Select value={aiModel} onChange={(e) => setAiModel(e.target.value)} className="mt-2">
-                      <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
-                      <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
-                      <option value="gemini-2.0-pro-exp-0205">Gemini 2.0 Pro Experimental</option>
-                      <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
-                      <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
-                      <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
-                    </Select>
                   </Field>
                 </div>
                 <p className="mt-4 text-xs text-amber-700">
@@ -542,7 +524,12 @@ IMPORTANT: You must separate the output for Task 1 and Task 2 exactly with this 
               </div>
 
               <div className="mt-6">
-                <Button onClick={generateExamWithAI} disabled={isGenerating} variant="gold" className="w-full py-3 text-base">
+                <Button 
+                  onClick={() => setShowModelModal(true)} 
+                  disabled={isGenerating} 
+                  variant="gold" 
+                  className="w-full py-3 text-base"
+                >
                   <Sparkles size={20} />
                   {isGenerating ? "Generating Course Materials..." : "Generate Full TOS & Exam Paper"}
                 </Button>
@@ -583,6 +570,63 @@ IMPORTANT: You must separate the output for Task 1 and Task 2 exactly with this 
           AMCOL TOS & Examination Builder — data is stored locally in the browser unless exported.
         </footer>
       </div>
+
+      {showModelModal && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm print:hidden"
+          onClick={() => setShowModelModal(false)}
+        >
+          <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center gap-3">
+              <div className="rounded-full bg-amber-100 p-2 text-amber-600">
+                <Sparkles size={24} />
+              </div>
+              <h3 className="text-xl font-bold text-slate-900">Confirm Generation</h3>
+            </div>
+            <p className="mt-3 text-sm text-slate-500">
+              Review your settings and choose the AI model you want to use for generating the Table of Specification and Exam paper.
+            </p>
+            <div className="mt-6 space-y-4">
+              <Field label="AI Model">
+                <Select value={aiModel} onChange={(e) => setAiModel(e.target.value)}>
+                  <option value="gemini-2.5-pro">Gemini 2.5 Pro (Best Quality)</option>
+                  <option value="gemini-2.5-flash">Gemini 2.5 Flash (Fastest)</option>
+                  <option value="gemini-2.0-pro-exp-0205">Gemini 2.0 Pro Experimental</option>
+                  <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
+                  <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
+                  <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
+                </Select>
+              </Field>
+
+              {!apiKey && (
+                <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 shadow-sm">
+                  <Field label="Google Gemini API Key Required">
+                    <Input
+                      type="password"
+                      placeholder="Enter your API Key here..."
+                      value={apiKey}
+                      onChange={(e) => setApiKey(e.target.value)}
+                      className="mt-1 border-rose-300 focus:border-rose-500 focus:ring-rose-200"
+                    />
+                  </Field>
+                </div>
+              )}
+            </div>
+            <div className="mt-8 flex justify-end gap-3">
+              <Button variant="light" onClick={() => setShowModelModal(false)}>Cancel</Button>
+              <Button variant="gold" disabled={!apiKey} onClick={() => {
+                if (apiKey) {
+                  saveData();
+                  setShowModelModal(false);
+                  generateExamWithAI();
+                }
+              }}>
+                <Sparkles size={16} /> Confirm & Generate
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
